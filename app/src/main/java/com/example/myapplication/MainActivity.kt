@@ -1,6 +1,6 @@
 package com.example.myapplication
 
-import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -16,155 +16,156 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import java.text.SimpleDateFormat
 import java.util.*
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AlarmSetterApp()
+            MaterialTheme {
+                AlarmSetterApp()
+            }
         }
     }
 }
 
 @Composable
 fun AlarmSetterApp() {
+    val context = LocalContext.current
     val calendar = Calendar.getInstance()
 
+    // Use strings for hour and minute to allow empty fields
     var hourText by remember { mutableStateOf(calendar.get(Calendar.HOUR_OF_DAY).toString()) }
     var minuteText by remember { mutableStateOf(calendar.get(Calendar.MINUTE).toString()) }
-    var selectedDate by remember { mutableStateOf("") }
-    var selectedCalendar by remember { mutableStateOf(calendar.clone() as Calendar) }
-    var repeatWeekly by remember { mutableStateOf(false) }
-
-    val context = LocalContext.current
-
-    fun updateSelectedDate(year: Int, month: Int, day: Int) {
-        val newCalendar = Calendar.getInstance()
-        newCalendar.set(year, month, day,
-            hourText.toIntOrNull() ?: calendar.get(Calendar.HOUR_OF_DAY),
-            minuteText.toIntOrNull() ?: calendar.get(Calendar.MINUTE))
-        selectedCalendar = newCalendar.clone() as Calendar
-
-        val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-        selectedDate = "${dateFormat.format(newCalendar.time)} ${hourText}:${minuteText}"
-    }
+    var alarmMessage by remember { mutableStateOf("My Alarm") }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "Select Alarm Time", style = MaterialTheme.typography.headlineMedium)
-        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Alarm Setter", style = MaterialTheme.typography.headlineMedium)
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Hour:")
-            Spacer(modifier = Modifier.width(8.dp))
-            TextField(
+        // Manual time input with separate fields
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Hour input
+            OutlinedTextField(
                 value = hourText,
-                onValueChange = {
-                    val filtered = it.filter { char -> char.isDigit() }.take(2)
-                    val hour = filtered.toIntOrNull()?.coerceIn(0, 23)?.toString() ?: ""
-                    if (filtered.isNotEmpty()) {
-                        hourText = hour
-                        if (selectedDate.isNotEmpty()) {
-                            val parts = selectedDate.split(" ")[0] // Keep the date
-                            selectedDate = "$parts $hour:$minuteText"
-
-                            // Update the calendar too
-                            selectedCalendar.set(Calendar.HOUR_OF_DAY, hour.toIntOrNull() ?: 0)
-                        }
+                onValueChange = { newValue ->
+                    // Allow empty field or digits only, max 2 chars
+                    if (newValue.isEmpty() || (newValue.all { it.isDigit() } && newValue.length <= 2)) {
+                        hourText = newValue
                     }
                 },
-                modifier = Modifier.width(60.dp)
+                label = { Text("Hour") },
+                singleLine = true,
+                modifier = Modifier.width(80.dp)
             )
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = "Minute:")
-            Spacer(modifier = Modifier.width(8.dp))
-            TextField(
+
+            Text(text = ":", modifier = Modifier.padding(horizontal = 8.dp))
+
+            // Minute input
+            OutlinedTextField(
                 value = minuteText,
-                onValueChange = {
-                    val filtered = it.filter { char -> char.isDigit() }.take(2)
-                    val minute = filtered.toIntOrNull()?.coerceIn(0, 59)?.toString() ?: ""
-                    if (filtered.isNotEmpty()) {
-                        minuteText = minute
-                        if (selectedDate.isNotEmpty()) {
-                            val parts = selectedDate.split(" ")[0] // Keep the date
-                            selectedDate = "$parts $hourText:$minute"
-
-                            // Update the calendar too
-                            selectedCalendar.set(Calendar.MINUTE, minute.toIntOrNull() ?: 0)
-                        }
+                onValueChange = { newValue ->
+                    // Allow empty field or digits only, max 2 chars
+                    if (newValue.isEmpty() || (newValue.all { it.isDigit() } && newValue.length <= 2)) {
+                        minuteText = newValue
                     }
                 },
-                modifier = Modifier.width(60.dp)
+                label = { Text("Min") },
+                singleLine = true,
+                modifier = Modifier.width(80.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+
+        // Time picker button
         Button(onClick = {
-            DatePickerDialog(context, { _, year, month, dayOfMonth ->
-                updateSelectedDate(year, month, dayOfMonth)
-            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH)).show()
+            TimePickerDialog(
+                context,
+                { _, selectedHour, selectedMinute ->
+                    hourText = selectedHour.toString()
+                    minuteText = selectedMinute.toString().padStart(2, '0')
+                },
+                hourText.toIntOrNull() ?: calendar.get(Calendar.HOUR_OF_DAY),
+                minuteText.toIntOrNull() ?: calendar.get(Calendar.MINUTE),
+                true // 24-hour format
+            ).show()
         }) {
-            Text(text = "Select Date")
+            Text("Use Time Picker")
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Selected Date: $selectedDate")
+        Spacer(modifier = Modifier.height(24.dp))
 
-        Spacer(modifier = Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(
-                checked = repeatWeekly,
-                onCheckedChange = { repeatWeekly = it }
-            )
-            Text(text = "Repeat Weekly")
-        }
+        // Message input
+        OutlinedTextField(
+            value = alarmMessage,
+            onValueChange = { alarmMessage = it },
+            label = { Text("Alarm Message") },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp)
+        )
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = {
-            val hour = hourText.toIntOrNull()
-            val minute = minuteText.toIntOrNull()
+        Spacer(modifier = Modifier.height(32.dp))
 
-            if (hour == null || minute == null) {
-                Toast.makeText(context, "Please enter valid time values", Toast.LENGTH_SHORT).show()
-                return@Button
-            }
+        // Set alarm button
+        Button(
+            onClick = {
+                val hour = hourText.toIntOrNull()
+                val minute = minuteText.toIntOrNull()
 
-            if (selectedDate.isEmpty()) {
-                Toast.makeText(context, "Please select a date", Toast.LENGTH_SHORT).show()
-                return@Button
-            }
+                if (hour == null || minute == null) {
+                    Toast.makeText(context, "Please enter valid hour and minute", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
 
-            setAlarm(context, hour, minute, selectedDate, selectedCalendar, repeatWeekly)
-        }) {
-            Text(text = "Set Alarm")
+                if (hour < 0 || hour > 23) {
+                    Toast.makeText(context, "Hour must be between 0-23", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                if (minute < 0 || minute > 59) {
+                    Toast.makeText(context, "Minute must be between 0-59", Toast.LENGTH_SHORT).show()
+                    return@Button
+                }
+
+                try {
+                    setAlarm(context, hour, minute, alarmMessage)
+                } catch (e: Exception) {
+                    Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            },
+            modifier = Modifier.height(48.dp).width(200.dp)
+        ) {
+            Text("Set Alarm")
         }
     }
 }
 
-fun setAlarm(context: Context, hour: Int, minute: Int, date: String, calendar: Calendar, repeatWeekly: Boolean) {
-    val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
-        putExtra(AlarmClock.EXTRA_HOUR, hour)
-        putExtra(AlarmClock.EXTRA_MINUTES, minute)
-        putExtra(AlarmClock.EXTRA_MESSAGE, "Alarm set for $date")
-        putExtra(AlarmClock.EXTRA_VIBRATE, true)
-        putExtra(AlarmClock.EXTRA_SKIP_UI, false)
-
-        // Only add days if repeatWeekly is true
-        if (repeatWeekly) {
-            val dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK)
-            putExtra(AlarmClock.EXTRA_DAYS, arrayListOf(dayOfWeek))
-        }
-    }
-
+fun setAlarm(context: Context, hour: Int, minute: Int, message: String) {
     try {
+        val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
+            putExtra(AlarmClock.EXTRA_HOUR, hour)
+            putExtra(AlarmClock.EXTRA_MINUTES, minute)
+            putExtra(AlarmClock.EXTRA_MESSAGE, message)
+            putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+        }
+
         context.startActivity(intent)
-        Toast.makeText(context, "Alarm set for $date", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            "Setting alarm for ${String.format("%02d:%02d", hour, minute)}",
+            Toast.LENGTH_SHORT
+        ).show()
     } catch (e: ActivityNotFoundException) {
-        Toast.makeText(context, "No alarm app available", Toast.LENGTH_LONG).show()
+        Toast.makeText(context, "No alarm app found on this device", Toast.LENGTH_LONG).show()
+    } catch (e: Exception) {
+        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
     }
 }
